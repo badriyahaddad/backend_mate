@@ -1,24 +1,18 @@
 <?php
 
 namespace App\Http\Controllers;
-
-use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\LoginRequest;
-use App\Models\User;
 use App\Models\user_otps;
 use App\Models\users;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Closure;
-use Laravel\Sanctum\HasApiTokens;
-use Carbon\Carbon;
 use Tymon\JWTAuth\Facades\JWTAuth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -63,33 +57,38 @@ public function login(LoginRequest $request)
 
     // If user does not exist, return error response
     if (!$user) {
-        return response()->json([
-            'message' => 'The email does not exist.'
-        ], 404);
+        return response()->json(['message' => 'The email does not exist.'], 404);
     }
 
     // Check if the password is correct
     if (!Hash::check($credentials['password'], $user->password)) {
-        return response()->json([
-            'message' => 'The password is incorrect.'
-        ], 401);
+        return response()->json(['message' => 'The password is incorrect.'], 401);
     }
 
     // If credentials are correct, authenticate the user
     if (Auth::attempt($credentials)) {
-        // Generate token or session (depending on your authentication method)
-        $token = $user->createToken('auth_token')->plainTextToken;
+        try {
+            // Generate Access Token (JWT Token)
+            $accessToken = JWTAuth::fromUser($user);
 
-        return response()->json([
-            'message' => 'Login successful',
-            'token' => $token,
-            'user' => $user,
-        ], 200);
+            // Optionally, create a refresh token (long-lived token)
+            $refreshToken = JWTAuth::fromUser($user, ['exp' => now()->addWeeks(2)->timestamp]);
+
+            return response()->json([
+                'message' => 'Login successful',
+                'access_token' => $accessToken,  // Short-lived token (e.g., 1 hour)
+                'refresh_token' => $refreshToken,  // Long-lived token (e.g., 2 weeks)
+                'user' => $user,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Could not create token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    return response()->json([
-        'message' => 'Login failed.'
-    ], 401);
+    return response()->json(['message' => 'Login failed.'], 401);
 }
 
 
@@ -167,6 +166,54 @@ public function resetPassword(Request $request)
     $userOtp->delete();
 
     return response()->json(['message' => 'Password reset successfully'], 200);
+}
+//------------------------------------------ log out ---------------------------------------------------------
+public function logout(Request $request)
+{
+    try {
+        // Get the token from the request
+        $token = JWTAuth::getToken();
+
+        // Check if the token exists
+        if (!$token) {
+            return response()->json(['error' => 'Token not provided'], 400);
+        }
+
+        // Debugging: Output the payload of the token
+        $payload = JWTAuth::getPayload($token)->toArray();
+        Log::info('Payload:', $payload);
+
+        // Invalidate the token
+        JWTAuth::invalidate($token);
+
+        return response()->json(['message' => 'Successfully logged out']);
+    } catch (TokenExpiredException $e) {
+        return response()->json(['error' => 'Token has already expired'], 401);
+    } catch (TokenInvalidException $e) {
+        Log::error('Invalid Token:', ['token' => $token]);
+        return response()->json(['error' => 'Token is invalid'], 400);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Failed to logout, please try again'], 500);
+    }
+}
+
+public function refreshToken(Request $request)
+{
+    try {
+        // Get the refresh token from the request header
+        $refreshToken = $request->header('Authorization');
+
+        // Attempt to refresh the token
+        $newAccessToken = JWTAuth::refresh($refreshToken);
+
+        return response()->json([
+            'new_access_token' => $newAccessToken,
+        ], 200);
+    } catch (TokenExpiredException $e) {
+        return response()->json(['error' => 'Refresh token expired'], 401);
+    } catch (TokenInvalidException $e) {
+        return response()->json(['error' => 'Invalid refresh token'], 400);
+    }
 }
 
 }

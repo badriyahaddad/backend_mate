@@ -37,6 +37,10 @@ class users extends Authenticatable implements JWTSubject
     {
         return $this->hasOne(user_otps::class, 'user_id');
     }
+    public function rooms()
+    {
+        return $this->belongsToMany(Room::class, 'room_user');
+    }
 
     protected $table = 'users_mate';
     use HasApiTokens, HasFactory, Notifiable;

@@ -5,6 +5,8 @@ use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\RoomController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -19,10 +21,6 @@ use App\Http\Controllers\AuthController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::get('/home', function () {
-    return view('home');
-});
-
 Route::controller(TestController::class)->prefix('name')->group(function () {
     Route::post('store', 'firstAction') ;
     Route::get('show', 'showNames');
@@ -35,11 +33,14 @@ Route::controller(AuthController::class)->prefix('auth')->group(function () {
     Route::post('login', 'login')->withoutMiddleware(['auth']);
     Route::post('forgot-password',  'forgotPassword')->withoutMiddleware('auth:api');
     Route::post('reset-password', 'resetPassword')->withoutMiddleware('auth:api');
-    Route::middleware('auth:api')->get('showusers', 'index');
-    Route::get('showtoken', 'handle');
+    Route::post('logout', 'logout')->withoutMiddleware('auth:api');
+
 });
-Route::get('test-email', function () {
-    Mail::raw('Test email body', function ($message) {
-        $message->to('badriya.al.haddad.it.3915@gmail.com')->subject('Test Email');
-    });
+Route::controller(RoomController::class)->prefix('room')->group(function () {
+    Route::post('store', 'store');
+    Route::get('index', 'index');
+    Route::post('{roomId}/adduser', 'addUser')->withoutMiddleware('auth:api');
+        Route::post('asscoll', 'assignCollaborator')->withoutMiddleware('auth:api');
+
+
 });

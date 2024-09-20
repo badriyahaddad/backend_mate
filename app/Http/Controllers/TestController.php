@@ -12,42 +12,6 @@ class TestController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
-    }
     public function firstAction(TestRequest $request)
     {
         $data = $request->validated();
@@ -60,7 +24,7 @@ class TestController extends Controller
             'stored_data' => $name
         ]);
     }
-
+//-------------------------------------------------------
     public function showNames()
     {
         // Retrieve all names and ages from the database
@@ -69,7 +33,7 @@ class TestController extends Controller
             if ($person->age < 18) {
                 $person->age = $person->age . ' (Underage)';
             }
-            if ($person->name =='badriya haddad'){
+            if ($person->name =='bardic hadar'){
                 $person->name=$person->name . ' (this is the admin)';
             }
             return $person;
@@ -78,14 +42,14 @@ class TestController extends Controller
         // Return the modified data as JSON
         return response()->json($names);
     }
-// delete
+// delete-------------------------------------------------------
     public function deleteName($id){
     $name = TestModel::findOrFail($id);
     $name->delete();
 
     return response()->json(['message' => 'Name deleted successfully'], 200);
 }
-//update
+//update-------------------------------------------------------
 public function updateName(TestRequest $request, $id)
 {
     $name = TestModel::findOrFail($id);
@@ -93,13 +57,11 @@ public function updateName(TestRequest $request, $id)
 
     return response()->json(['message' => 'Name updated successfully'], 200);
 }
-//searching
+//searching-------------------------------------------------------
 public function searchNames(Request $request)
 {
     $searchTerm = $request->query('term');
     $names = TestModel::where('name', 'LIKE', '%' . $searchTerm . '%')->get();
     return response()->json($names);
 }
-
-
 }
